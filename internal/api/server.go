@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"instagram-bot-live/config"
 	"instagram-bot-live/internal/api/rest"
 	"instagram-bot-live/internal/api/rest/handlers"
@@ -23,11 +24,18 @@ func StartServer(config config.AppConfig) {
 	log.Println("Database connected")
 
 	// Run migrations
-	err = db.AutoMigrate(&domain.User{}, &domain.BankAccount{})
+	err = db.AutoMigrate(&domain.User{}, &domain.BankAccount{}, &domain.Category{}, &domain.Product{})
 	if err != nil {
 		log.Fatalf("Error an runing migration: %v\n", err)
 	}
 	log.Println("migrations was successful")
+
+	c := cors.New(cors.Config{
+		AllowOrigins: "http://localhost:3000",
+		AllowHeaders: "Content-Type, Accept, Authorization",
+		AllowMethods: "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD",
+	})
+	app.Use(c)
 
 	auth := helper.SetupAuth(config.AppSecret)
 
@@ -42,9 +50,8 @@ func StartServer(config config.AppConfig) {
 }
 
 func setupRouter(rh *rest.RestHandler) {
-	// userhandler
 	handlers.SetupUserRoutes(rh)
-	//transactions
+	handlers.SetupCatalogRoutes(rh)
 	//catalogue
 
 }
