@@ -24,7 +24,14 @@ func StartServer(config config.AppConfig) {
 	log.Println("Database connected")
 
 	// Run migrations
-	err = db.AutoMigrate(&domain.User{}, &domain.BankAccount{}, &domain.Category{}, &domain.Product{})
+	err = db.AutoMigrate(
+		&domain.User{},
+		&domain.Address{},
+		&domain.BankAccount{},
+		&domain.Category{},
+		&domain.Product{},
+		&domain.Cart{},
+	)
 	if err != nil {
 		log.Fatalf("Error an runing migration: %v\n", err)
 	}

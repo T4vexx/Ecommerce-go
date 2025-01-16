@@ -15,16 +15,71 @@ type UserRepository interface {
 	FindUserById(id uint) (domain.User, error)
 	UpdateUser(id uint, u domain.User) (domain.User, error)
 	CreateBankAccount(e domain.BankAccount) error
+
+	FindCartItems(uId uint) ([]domain.Cart, error)
+	FindCartItem(uid uint, pId uint) (domain.Cart, error)
+	CreateCart(c domain.Cart) error
+	UpdateCart(c domain.Cart) error
+	DeleteCartById(id uint) error
+	DeleteCartItems(id uint) error
+
+	CreateProfile(e domain.Address) error
+	UpdateProfile(e domain.Address) error
 }
 
 type userRepository struct {
 	db *gorm.DB
 }
 
-func NewUserRepository(db *gorm.DB) UserRepository {
-	return &userRepository{
-		db: db,
+func (r userRepository) CreateProfile(e domain.Address) error {
+	err := r.db.Create(&e).Error
+	if err != nil {
+		log.Printf("Error creating profile: %v", err)
+		return errors.New("Error creating profile")
 	}
+	return nil
+}
+
+func (r userRepository) UpdateProfile(e domain.Address) error {
+	err := r.db.Where("user_id = ?", e.UserID).Updates(e).Error
+	if err != nil {
+		log.Printf("Error updating profile: %v", err)
+		return errors.New("Error updating profile")
+	}
+
+	return nil
+}
+
+func (r userRepository) FindCartItems(uId uint) ([]domain.Cart, error) {
+	var carts []domain.Cart
+	err := r.db.Where("user_id = ?", uId).Find(&carts).Error
+	return carts, err
+}
+
+func (r userRepository) FindCartItem(uid uint, pId uint) (domain.Cart, error) {
+	cartItem := domain.Cart{}
+	err := r.db.Where("user_id = ? AND product_id = ?", uid, pId).First(&cartItem).Error
+	return cartItem, err
+}
+
+func (r userRepository) CreateCart(c domain.Cart) error {
+	return r.db.Create(&c).Error
+}
+
+func (r userRepository) UpdateCart(c domain.Cart) error {
+	var cart domain.Cart
+	err := r.db.Model(&cart).Clauses(clause.Returning{}).Where("id = ?", c.ID).Updates(c).Error
+	return err
+}
+
+func (r userRepository) DeleteCartById(id uint) error {
+	err := r.db.Delete(&domain.Cart{}, "id = ?", id).Error
+	return err
+}
+
+func (r userRepository) DeleteCartItems(id uint) error {
+	err := r.db.Where("user_id = ?", id).Delete(&domain.Cart{}).Error
+	return err
 }
 
 func (r userRepository) CreateUser(u domain.User) (domain.User, error) {
@@ -36,10 +91,11 @@ func (r userRepository) CreateUser(u domain.User) (domain.User, error) {
 
 	return u, nil
 }
+
 func (r userRepository) FindUser(email string) (domain.User, error) {
 	var user domain.User
 
-	err := r.db.First(&user, "email = ?", email).Error
+	err := r.db.Preload("Address").First(&user, "email = ?", email).Error
 
 	if err != nil {
 		return domain.User{}, errors.New("User does not exist")
@@ -47,10 +103,11 @@ func (r userRepository) FindUser(email string) (domain.User, error) {
 
 	return user, nil
 }
+
 func (r userRepository) FindUserById(id uint) (domain.User, error) {
 	var user domain.User
 
-	err := r.db.First(&user, id).Error
+	err := r.db.Preload("Address").First(&user, id).Error
 
 	if err != nil {
 		log.Printf("find user error %v", err)
@@ -59,6 +116,7 @@ func (r userRepository) FindUserById(id uint) (domain.User, error) {
 
 	return user, nil
 }
+
 func (r userRepository) UpdateUser(id uint, u domain.User) (domain.User, error) {
 	var user domain.User
 
@@ -70,6 +128,13 @@ func (r userRepository) UpdateUser(id uint, u domain.User) (domain.User, error) 
 
 	return domain.User{}, nil
 }
+
 func (r userRepository) CreateBankAccount(e domain.BankAccount) error {
 	return r.db.Create(&e).Error
+}
+
+func NewUserRepository(db *gorm.DB) UserRepository {
+	return &userRepository{
+		db: db,
+	}
 }

@@ -7,12 +7,14 @@ import (
 	"instagram-bot-live/internal/dto"
 	"instagram-bot-live/internal/helper"
 	"instagram-bot-live/internal/repository"
+	"log"
 	"time"
 )
 
 type UserService struct {
 	Repo   repository.UserRepository
 	Auth   helper.Auth
+	CRepo  repository.CatalogRepository
 	Config config.AppConfig
 }
 
@@ -126,17 +128,78 @@ func (s UserService) VerifyCode(id uint, code int) error {
 	return nil
 }
 
-func (s UserService) CreateProfile(id uint, input any) error {
+func (s UserService) CreateProfile(id uint, input dto.ProfileInput) error {
+	var user domain.User
+	if input.FirstName != "" {
+		user.FirstName = input.FirstName
+	}
+	if input.LastName != "" {
+		user.LastName = input.LastName
+	}
+
+	_, err := s.Repo.UpdateUser(id, user)
+	if err != nil {
+		return err
+	}
+
+	address := domain.Address{
+		AddressLine1: input.AddressInput.AddressLine1,
+		AddressLine2: input.AddressInput.AddressLine2,
+		City:         input.AddressInput.City,
+		Country:      input.AddressInput.Country,
+		PostalCode:   input.AddressInput.PostalCode,
+		UserID:       id,
+	}
+
+	err = s.Repo.CreateProfile(address)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
 func (s UserService) GetProfile(id uint) (*domain.User, error) {
 
-	return nil, nil
+	user, err := s.Repo.FindUserById(id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
 
-func (s UserService) UpdateProfile(id uint, input any) error {
+func (s UserService) UpdateProfile(id uint, input dto.ProfileInput) error {
+
+	user, err := s.Repo.FindUserById(id)
+	if err != nil {
+		return err
+	}
+
+	if input.FirstName != "" {
+		user.FirstName = input.FirstName
+	}
+	if input.LastName != "" {
+		user.LastName = input.LastName
+	}
+
+	_, err = s.Repo.UpdateUser(id, user)
+	if err != nil {
+		return err
+	}
+
+	address := domain.Address{
+		AddressLine1: input.AddressInput.AddressLine1,
+		AddressLine2: input.AddressInput.AddressLine2,
+		City:         input.AddressInput.City,
+		Country:      input.AddressInput.Country,
+		PostalCode:   input.AddressInput.PostalCode,
+		UserID:       id,
+	}
+	err = s.Repo.UpdateProfile(address)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -176,18 +239,58 @@ func (s UserService) BecomeSeller(id uint, input dto.SellerInput) (string, error
 	return token, nil
 }
 
-func (s UserService) FindaCart(id uint) ([]interface{}, error) {
+func (s UserService) FindCart(id uint) ([]domain.Cart, error) {
 
-	return nil, nil
+	cartItems, err := s.Repo.FindCartItems(id)
+
+	return cartItems, err
 }
 
-func (s UserService) CreateCart(input any, u domain.User) ([]interface{}, error) {
+func (s UserService) CreateCart(input dto.CreateCartRequest, u domain.User) ([]domain.Cart, error) {
+	// check if exists, yes update, no create cart
+	cart, _ := s.Repo.FindCartItem(u.ID, input.ProductId)
+	if cart.ID > 0 {
+		if input.ProductId == 0 {
+			return nil, errors.New("Product Id is required!")
+		}
+		if input.Qty < 1 {
+			err := s.Repo.DeleteCartById(cart.ID)
+			if err != nil {
+				log.Printf("Error on deleting cart item %v", err)
+				return nil, errors.New("error on deleting cart item")
+			}
+		} else {
+			cart.Qty = input.Qty
+			err := s.Repo.UpdateCart(cart)
+			if err != nil {
+				log.Printf("Error on updating cart item %v", err)
+				return nil, errors.New("error on updating cart item")
+			}
+		}
+	} else {
+		product, err := s.CRepo.FindProductById(int(input.ProductId))
+		if err != nil {
+			return nil, errors.New("Product not found to create cart item")
+		}
 
-	return nil, nil
+		err = s.Repo.CreateCart(domain.Cart{
+			ProductId: input.ProductId,
+			UserId:    u.ID,
+			Name:      product.Name,
+			Qty:       input.Qty,
+			ImageUrl:  product.ImageUrl,
+			Price:     product.Price,
+			SellerId:  product.UserId,
+		})
+		if err != nil {
+			return nil, errors.New("Error on creating cart item")
+		}
+	}
+	return s.Repo.FindCartItems(u.ID)
 }
 
 func (s UserService) CreateOrder(u domain.User) (int, error) {
-
+	
 	return 0, nil
 }
 
