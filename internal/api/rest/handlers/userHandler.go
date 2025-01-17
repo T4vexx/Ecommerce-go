@@ -6,6 +6,7 @@ import (
 	"instagram-bot-live/internal/repository"
 	"instagram-bot-live/internal/service"
 	"net/http"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -248,14 +249,35 @@ func (h *UserHandler) CreateOrder(ctx *fiber.Ctx) error {
 }
 
 func (h *UserHandler) GetOrderById(ctx *fiber.Ctx) error {
+	user := h.svc.Auth.GetCurrentUser(ctx)
+	id, _ := strconv.Atoi(ctx.Params("id"))
+
+	order, err := h.svc.GetOrderById(uint(id), user.ID)
+	if err != nil {
+		return ctx.Status(http.StatusInternalServerError).JSON(&fiber.Map{
+			"message": err.Error(),
+		})
+	}
+
 	return ctx.Status(200).JSON(&fiber.Map{
 		"message": "get order",
+		"order":   order,
 	})
 }
 
 func (h *UserHandler) GetOrders(ctx *fiber.Ctx) error {
+	user := h.svc.Auth.GetCurrentUser(ctx)
+
+	orders, err := h.svc.GetOrders(user)
+	if err != nil {
+		return ctx.Status(http.StatusInternalServerError).JSON(&fiber.Map{
+			"message": err.Error(),
+		})
+	}
+
 	return ctx.Status(200).JSON(&fiber.Map{
-		"message": "get orders",
+		"message": "get order",
+		"orders":  orders,
 	})
 }
 

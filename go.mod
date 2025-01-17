@@ -21,6 +21,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/stripe/stripe-go/v81 v81.2.0 // indirect
 	github.com/twilio/twilio-go v1.23.9 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.57.0 // indirect

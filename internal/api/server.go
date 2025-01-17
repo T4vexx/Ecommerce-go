@@ -7,6 +7,7 @@ import (
 	"instagram-bot-live/internal/api/rest/handlers"
 	"instagram-bot-live/internal/domain"
 	"instagram-bot-live/internal/helper"
+	"instagram-bot-live/pkg/payment"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
@@ -31,6 +32,9 @@ func StartServer(config config.AppConfig) {
 		&domain.Category{},
 		&domain.Product{},
 		&domain.Cart{},
+		&domain.Order{},
+		&domain.OrderItem{},
+		&domain.Payment{},
 	)
 	if err != nil {
 		log.Fatalf("Error an runing migration: %v\n", err)
@@ -45,12 +49,14 @@ func StartServer(config config.AppConfig) {
 	app.Use(c)
 
 	auth := helper.SetupAuth(config.AppSecret)
+	paymentClient := payment.NewPaymentClent(config.StripeSecret, config.SuccessUrl, config.CancelUrl)
 
 	rh := &rest.RestHandler{
 		App:    app,
 		DB:     db,
 		Auth:   auth,
 		Config: config,
+		Pc:     paymentClient,
 	}
 	setupRouter(rh)
 	app.Listen(config.ServerPort)
@@ -58,7 +64,6 @@ func StartServer(config config.AppConfig) {
 
 func setupRouter(rh *rest.RestHandler) {
 	handlers.SetupUserRoutes(rh)
+	handlers.SetupTransactionRoutes(rh)
 	handlers.SetupCatalogRoutes(rh)
-	//catalogue
-
 }

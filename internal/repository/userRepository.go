@@ -23,12 +23,48 @@ type UserRepository interface {
 	DeleteCartById(id uint) error
 	DeleteCartItems(id uint) error
 
+	CreateOrder(o domain.Order) error
+	FindOrders(uId uint) ([]domain.Order, error)
+	FindOrderById(id uint, uId uint) (domain.Order, error)
+
 	CreateProfile(e domain.Address) error
 	UpdateProfile(e domain.Address) error
 }
 
 type userRepository struct {
 	db *gorm.DB
+}
+
+func (r userRepository) CreateOrder(o domain.Order) error {
+	err := r.db.Create(&o).Error
+	if err != nil {
+		log.Printf("Error create the order: %v", err)
+		return errors.New("failed to create order")
+	}
+
+	return nil
+}
+
+func (r userRepository) FindOrders(uId uint) ([]domain.Order, error) {
+	var orders []domain.Order
+	err := r.db.Where("user_id = ?", uId).Find(&orders).Error
+	if err != nil {
+		log.Printf("Error finding orders: %v", err)
+		return nil, errors.New("failed to find orders")
+	}
+
+	return orders, nil
+}
+
+func (r userRepository) FindOrderById(id uint, uId uint) (domain.Order, error) {
+	var order domain.Order
+	err := r.db.Preload("Items").Where("id = ? AND user_id = ?", id, uId).Find(&order).Error
+	if err != nil {
+		log.Printf("Error finding orders: %v", err)
+		return domain.Order{}, errors.New("failed to find order")
+	}
+
+	return order, nil
 }
 
 func (r userRepository) CreateProfile(e domain.Address) error {
@@ -107,7 +143,13 @@ func (r userRepository) FindUser(email string) (domain.User, error) {
 func (r userRepository) FindUserById(id uint) (domain.User, error) {
 	var user domain.User
 
-	err := r.db.Preload("Address").First(&user, id).Error
+	err := r.db.Preload("Address").
+		Preload("BankAccount").
+		Preload("Cart").
+		Preload("Order").
+		Preload("Order.Items").
+		First(&user, id).
+		Error
 
 	if err != nil {
 		log.Printf("find user error %v", err)
