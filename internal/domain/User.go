@@ -19,7 +19,7 @@ type User struct {
 	Cart        []Cart      `json:"cart"`
 	Order       []Order     `json:"order"`
 	Payment     []Payment   `json:"payment"`
-	Code        int         `json:"code"`
+	Code        string      `json:"code"`
 	Expiry      time.Time   `json:"expiry"`
 	Verified    bool        `json:"verified" gorm:"default:false"`
 	UserType    string      `json:"user_type" gorm:"default:buyer"`

@@ -1,7 +1,6 @@
 package service
 
 import (
-	"github.com/stripe/stripe-go/v81"
 	"instagram-bot-live/internal/domain"
 	"instagram-bot-live/internal/dto"
 	"instagram-bot-live/internal/helper"
@@ -35,8 +34,29 @@ func (s TransactionService) GetActivePayment(uId uint) (*domain.Payment, error) 
 	return s.Repo.FindInitialPayment(uId)
 }
 
-func (s TransactionService) storeCreatePayment(uId uint, ps *stripe.CheckoutSession, amount float64) error {
+func (s TransactionService) StoreCreatePayment(input dto.CreatePaymentRequest) error {
+	payment := domain.Payment{
+		UserId:       input.UserId,
+		Amount:       input.Amount,
+		Status:       domain.PaymentStatusInitial,
+		PaymentId:    input.PaymentId,
+		ClientSecret: input.ClientSecret,
+		OrderId:      input.OrderId,
+	}
 
+	return s.Repo.CreatePayment(&payment)
+}
+
+func (s TransactionService) UpdatePayment(userId uint, status string, paymentLog string) error {
+	p, err := s.GetActivePayment(userId)
+	if err != nil {
+		return err
+	}
+
+	p.Status = domain.PaymentStatus(status)
+	p.Response = paymentLog
+
+	return s.Repo.UpdatePayment(p)
 }
 
 func NewTransactionService(r repository.TransactionRepository, auth helper.Auth) *TransactionService {

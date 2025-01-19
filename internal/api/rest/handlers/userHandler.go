@@ -31,12 +31,12 @@ func SetupUserRoutes(rh *rest.RestHandler) {
 	}
 
 	// public endpoints
-	pubRoutes := app.Group("/users")
+	pubRoutes := app.Group("/")
 	pubRoutes.Post("/register", handler.Register)
 	pubRoutes.Post("/login", handler.Login)
 
 	// private endpoints
-	pvtRoutes := pubRoutes.Group("/", rh.Auth.Authorize)
+	pvtRoutes := pubRoutes.Group("/users", rh.Auth.Authorize)
 	pvtRoutes.Get("/verify", handler.GetVerificationCode)
 	pvtRoutes.Post("/verify", handler.Verify)
 
@@ -48,7 +48,6 @@ func SetupUserRoutes(rh *rest.RestHandler) {
 	pvtRoutes.Post("/cart", handler.AddToCart)
 
 	pvtRoutes.Get("/order", handler.GetOrders)
-	pvtRoutes.Post("/order", handler.CreateOrder)
 	pvtRoutes.Get("/order/:id", handler.GetOrderById)
 
 	pvtRoutes.Post("/become-seller", handler.BecomeSeller)
@@ -222,7 +221,7 @@ func (h *UserHandler) AddToCart(ctx *fiber.Ctx) error {
 func (h *UserHandler) GetCart(ctx *fiber.Ctx) error {
 	user := h.svc.Auth.GetCurrentUser(ctx)
 
-	cart, err := h.svc.FindCart(user.ID)
+	cart, _, err := h.svc.FindCart(user.ID)
 	if err != nil {
 		return ctx.Status(http.StatusInternalServerError).JSON(&fiber.Map{
 			"message": "Error on get cart",
@@ -230,22 +229,6 @@ func (h *UserHandler) GetCart(ctx *fiber.Ctx) error {
 	}
 
 	return rest.SuccessMessage(ctx, "Cart found successfully", cart)
-}
-
-func (h *UserHandler) CreateOrder(ctx *fiber.Ctx) error {
-	user := h.svc.Auth.GetCurrentUser(ctx)
-
-	orderRef, err := h.svc.CreateOrder(user)
-	if err != nil {
-		return ctx.Status(http.StatusInternalServerError).JSON(&fiber.Map{
-			"message": "Error on create order",
-		})
-	}
-
-	return ctx.Status(200).JSON(&fiber.Map{
-		"message": "order created successfully",
-		"data":    orderRef,
-	})
 }
 
 func (h *UserHandler) GetOrderById(ctx *fiber.Ctx) error {

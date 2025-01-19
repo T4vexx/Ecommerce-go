@@ -66,14 +66,14 @@ func (s UserService) isVerifiedUSer(id uint) bool {
 	return err == nil && currentUser.Verified
 }
 
-func (s UserService) GetVerificationCode(e domain.User) (int, error) {
+func (s UserService) GetVerificationCode(e domain.User) (string, error) {
 	if s.isVerifiedUSer(e.ID) {
-		return 0, errors.New("User already verified!")
+		return "", errors.New("User already verified!")
 	}
 
 	code, err := s.Auth.GenerateCode()
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	user := domain.User{
@@ -83,7 +83,7 @@ func (s UserService) GetVerificationCode(e domain.User) (int, error) {
 
 	_, err = s.Repo.UpdateUser(e.ID, user)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	//user, err = s.Repo.FindUserById(e.ID)
@@ -99,7 +99,7 @@ func (s UserService) GetVerificationCode(e domain.User) (int, error) {
 	return code, nil
 }
 
-func (s UserService) VerifyCode(id uint, code int) error {
+func (s UserService) VerifyCode(id uint, code string) error {
 	if s.isVerifiedUSer(id) {
 		return errors.New("User already verified!")
 	}
@@ -297,19 +297,15 @@ func (s UserService) CreateCart(input dto.CreateCartRequest, u domain.User) ([]d
 	return s.Repo.FindCartItems(u.ID)
 }
 
-func (s UserService) CreateOrder(u domain.User) (int, error) {
+func (s UserService) CreateOrder(uId uint, orderRef string, pId string, amount float64) error {
 
-	items, amount, err := s.FindCart(u.ID)
+	items, _, err := s.FindCart(uId)
 	if err != nil {
-		return 0, errors.New("error on find cart items")
+		return errors.New("error on find cart items")
 	}
 	if len(items) == 0 {
-		return 0, errors.New("no items found, cannot create order")
+		return errors.New("no items found, cannot create order")
 	}
-
-	paymentId := "PAY12345"
-	txnId := "TXN12345"
-	orderRef, _ := helper.RandomNumbers(8)
 
 	var orderItems []domain.OrderItem
 
@@ -325,24 +321,23 @@ func (s UserService) CreateOrder(u domain.User) (int, error) {
 	}
 
 	order := domain.Order{
-		UserID:         u.ID,
-		PaymentId:      paymentId,
-		TransactionID:  txnId,
-		OrderRefNumber: uint(orderRef),
+		UserID:         uId,
+		PaymentId:      pId,
+		OrderRefNumber: orderRef,
 		Amount:         amount,
 		Items:          orderItems,
 	}
 	err = s.Repo.CreateOrder(order)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	err = s.Repo.DeleteCartItems(u.ID)
+	err = s.Repo.DeleteCartItems(uId)
 	if err != nil {
 		log.Printf("Error on deleting cart item %v", err)
 	}
 
-	return orderRef, nil
+	return nil
 }
 
 func (s UserService) GetOrders(u domain.User) ([]domain.Order, error) {
