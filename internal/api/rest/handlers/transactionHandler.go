@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 	"instagram-bot-live/config"
@@ -50,12 +49,17 @@ func SetupTransactionRoutes(as *rest.RestHandler) {
 	secRoutes := app.Group("/buyer", as.Auth.Authorize)
 	secRoutes.Get("/payment", handler.MakePayment)
 	secRoutes.Get("/verify", handler.VerifyPayment)
-
-	//sellerRoute := app.Group("/seller", as.Auth.AuthorizeSeller)
-	//sellerRoute.Get("/orders", handler.GetOrders)
-	//sellerRoute.Get("/orders/:id", handler.GetOrderDetails)
 }
 
+// MakePayment godoc
+// @Summary Initiates a payment
+// @Description Creates a payment request for the authenticated buyer. If an active payment exists, returns its client secret; otherwise, creates a new payment.
+// @Tags Transaction
+// @Produce json
+// @Success 200 {object} dto.MakePaymentSuccess "Payment information including public key and client secret"
+// @Failure 400 {object} dto.ErrorResponse "Error generating payment or saving payment"
+// @Failure 500 {object} dto.ErrorResponse "Error generating order id"
+// @Router /buyer/payment [get]
 func (h *TransactionHandler) MakePayment(ctx *fiber.Ctx) error {
 
 	user := h.svc.Auth.GetCurrentUser(ctx)
@@ -63,10 +67,10 @@ func (h *TransactionHandler) MakePayment(ctx *fiber.Ctx) error {
 
 	activePayment, err := h.svc.GetActivePayment(user.ID)
 	if activePayment != nil && activePayment.ID > 0 {
-		return ctx.Status(http.StatusOK).JSON(&fiber.Map{
-			"message": "make payment",
-			"pubKey":  pubKey,
-			"secret":  activePayment.ClientSecret,
+		return ctx.Status(http.StatusOK).JSON(dto.MakePaymentSuccess{
+			Message: "make payment",
+			PubKey:  pubKey,
+			Secret:  activePayment.ClientSecret,
 		})
 	}
 
@@ -74,15 +78,15 @@ func (h *TransactionHandler) MakePayment(ctx *fiber.Ctx) error {
 
 	orderId, err := helper.RandomNumbers(8)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "error generating order id",
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{
+			Message: "error generating order id",
 		})
 	}
 
 	paymentResult, err := h.paymentClient.CreatePayment(amount, user.ID, orderId)
 	if err != nil {
-		return ctx.Status(400).JSON(&fiber.Map{
-			"message": "error generating payment",
+		return ctx.Status(400).JSON(dto.ErrorResponse{
+			Message: "error generating payment",
 		})
 	}
 
@@ -94,24 +98,35 @@ func (h *TransactionHandler) MakePayment(ctx *fiber.Ctx) error {
 		OrderId:      orderId,
 	})
 	if err != nil {
-		return ctx.Status(400).JSON(&fiber.Map{
-			"message": "error saving payment",
+		return ctx.Status(400).JSON(dto.ErrorResponse{
+			Message: "error saving payment",
 		})
 	}
 
-	return ctx.Status(200).JSON(&fiber.Map{
-		"message": "create payment",
-		"pubKey":  pubKey,
-		"secret":  paymentResult.ClientSecret,
+	return ctx.Status(http.StatusOK).JSON(dto.MakePaymentSuccess{
+		Message: "create payment",
+		PubKey:  pubKey,
+		Secret:  paymentResult.ClientSecret,
 	})
 }
 
+// VerifyPayment godoc
+// @Summary Verifies payment status
+// @Description Checks the status of an active payment for the authenticated buyer, updates the payment status, and creates an order if payment is successful.
+// @Tags Transaction
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Verification result along with payment response"
+// @Failure 400 {object} dto.ErrorResponse "No active payment exists or error during verification"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error during verification"
+// @Router /buyer/verify [get]
 func (h *TransactionHandler) VerifyPayment(ctx *fiber.Ctx) error {
 	user := h.svc.Auth.GetCurrentUser(ctx)
 
 	activePayment, err := h.svc.GetActivePayment(user.ID)
 	if err != nil || activePayment.ID == 0 {
-		return ctx.Status(400).JSON(errors.New("no active payment exist"))
+		return ctx.Status(400).JSON(dto.ErrorResponse{
+			Message: "no active payment exists",
+		})
 	}
 
 	paymentRes, err := h.paymentClient.GetPaymentStatus(activePayment.PaymentId)
@@ -125,8 +140,8 @@ func (h *TransactionHandler) VerifyPayment(ctx *fiber.Ctx) error {
 	}
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(&fiber.Map{
-			"message": "error verifying payment",
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{
+			Message: "error verify payment",
 		})
 	}
 
@@ -137,11 +152,3 @@ func (h *TransactionHandler) VerifyPayment(ctx *fiber.Ctx) error {
 		"response": paymentRes,
 	})
 }
-
-//func (h *TransactionHandler) GetOrders(ctx *fiber.Ctx) error {
-//	return ctx.Status(200).JSON("success")
-//}
-//
-//func (h *TransactionHandler) GetOrderDetails(ctx *fiber.Ctx) error {
-//	return ctx.Status(200).JSON("success")
-//}

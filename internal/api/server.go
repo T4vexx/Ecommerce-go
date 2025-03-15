@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/swagger"
 	"instagram-bot-live/config"
 	"instagram-bot-live/internal/api/rest"
 	"instagram-bot-live/internal/api/rest/handlers"
@@ -17,7 +18,7 @@ import (
 
 func StartServer(config config.AppConfig) {
 	app := fiber.New()
-
+	app.Get("/swagger/*", swagger.HandlerDefault)
 	db, err := gorm.Open(postgres.Open(config.Dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Database connection error: %v\n", err)
@@ -42,7 +43,7 @@ func StartServer(config config.AppConfig) {
 	log.Println("migrations was successful")
 
 	c := cors.New(cors.Config{
-		AllowOrigins: "http://localhost:3000",
+		AllowOrigins: "http://localhost:3000, http://localhost:3333",
 		AllowHeaders: "Content-Type, Accept, Authorization",
 		AllowMethods: "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD",
 	})

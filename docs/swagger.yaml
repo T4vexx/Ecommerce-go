@@ -1,0 +1,853 @@
+basePath: /
+definitions:
+  domain.Category:
+    properties:
+      created_at:
+        type: string
+      display_order:
+        type: integer
+      id:
+        type: integer
+      image_url:
+        type: string
+      name:
+        type: string
+      parent_id:
+        type: integer
+      products:
+        items:
+          $ref: '#/definitions/domain.Product'
+        type: array
+      updated_at:
+        type: string
+    type: object
+  domain.Product:
+    properties:
+      category_id:
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      image_url:
+        type: string
+      name:
+        type: string
+      price:
+        type: number
+      stock:
+        type: integer
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  dto.AddressInput:
+    properties:
+      address_line_1:
+        type: string
+      address_line_2:
+        type: string
+      city:
+        type: string
+      country:
+        type: string
+      postal_code:
+        type: integer
+    type: object
+  dto.CreateCartRequest:
+    properties:
+      product_id:
+        type: integer
+      qty:
+        type: integer
+    type: object
+  dto.CreateCategoryResquest:
+    properties:
+      display_order:
+        type: integer
+      image_url:
+        type: string
+      name:
+        type: string
+      parent_id:
+        type: integer
+    type: object
+  dto.CreateProductRequest:
+    properties:
+      category_id:
+        type: integer
+      description:
+        type: string
+      image_url:
+        type: string
+      name:
+        type: string
+      price:
+        type: number
+      stock:
+        type: integer
+    type: object
+  dto.ErrorResponse:
+    properties:
+      message:
+        example: Please provide valid inputs
+        type: string
+      reason:
+        example: detalhes do erro se houver
+        type: string
+    type: object
+  dto.GetCategoriesSuccess:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/domain.Category'
+        type: array
+      message:
+        example: Categories
+        type: string
+    type: object
+  dto.GetCategorySuccess:
+    properties:
+      data:
+        $ref: '#/definitions/domain.Category'
+      message:
+        example: Categories
+        type: string
+    type: object
+  dto.MakePaymentSuccess:
+    properties:
+      message:
+        example: make payment
+        type: string
+      pubKey:
+        example: exemplo_de_chave_privada_asd2asd2
+        type: string
+      secret:
+        example: exemplo_de_segredo_stripe_asd2asd2
+        type: string
+    type: object
+  dto.ProfileInput:
+    properties:
+      address_input:
+        $ref: '#/definitions/dto.AddressInput'
+      first_name:
+        type: string
+      last_name:
+        type: string
+    type: object
+  dto.SellerInput:
+    properties:
+      bank_account_number:
+        type: integer
+      first_name:
+        type: string
+      last_name:
+        type: string
+      payment_type:
+        type: string
+      phone_number:
+        type: string
+      swift_code:
+        type: string
+    type: object
+  dto.UpdateStockRequest:
+    properties:
+      stock:
+        type: integer
+    type: object
+  dto.UserLogin:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  dto.UserSignup:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+    type: object
+  dto.UserSignupResponse:
+    properties:
+      message:
+        example: login/register
+        type: string
+      token:
+        example: token JWT
+        type: string
+    type: object
+  dto.VerificationCodeInput:
+    properties:
+      code:
+        type: string
+    type: object
+host: localhost:3333
+info:
+  contact:
+    email: contato@otavioteixeira.com
+    name: Otávio Augusto
+    url: http://github.com/T4vexx
+  description: API de e-commerce feita em Go com Fiber
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Ecommerce Go API
+  version: "1.0"
+paths:
+  /buyer/payment:
+    get:
+      description: Creates a payment request for the authenticated buyer. If an active
+        payment exists, returns its client secret; otherwise, creates a new payment.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Payment information including public key and client secret
+          schema:
+            $ref: '#/definitions/dto.MakePaymentSuccess'
+        "400":
+          description: Error generating payment or saving payment
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Error generating order id
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Initiates a payment
+      tags:
+      - Transaction
+  /buyer/verify:
+    get:
+      description: Checks the status of an active payment for the authenticated buyer,
+        updates the payment status, and creates an order if payment is successful.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Verification result along with payment response
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: No active payment exists or error during verification
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error during verification
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Verifies payment status
+      tags:
+      - Transaction
+  /categories:
+    get:
+      description: Retorna uma lista com todas as categorias disponíveis
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Retorna todas as categorias
+          schema:
+            $ref: '#/definitions/dto.GetCategoriesSuccess'
+        "404":
+          description: Retorna a mensagem de erro
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Obtém todas as categorias
+      tags:
+      - Catalog
+  /categories/{id}:
+    get:
+      description: Retorna os detalhes de uma categoria com base no ID informado
+      parameters:
+      - description: ID da Categoria
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Retorna a categoria por id caso o usuário tenha permissão
+          schema:
+            $ref: '#/definitions/dto.GetCategorySuccess'
+        "404":
+          description: Retorna a mensagem de erro
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Obtém categoria por ID
+      tags:
+      - Catalog
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Realiza o login do usuário utilizando email e senha
+      parameters:
+      - description: Credenciais do usuário
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UserLogin'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Dados retornados ao cadastrar o usuário
+          schema:
+            $ref: '#/definitions/dto.UserSignupResponse'
+        "400":
+          description: Erro na requisição
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Login do usuário
+      tags:
+      - Users
+  /products:
+    get:
+      description: Retorna uma lista com todos os produtos disponíveis
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Obtém todos os produtos
+      tags:
+      - Catalog
+  /products/{id}:
+    get:
+      description: Retorna os detalhes de um produto com base no ID informado
+      parameters:
+      - description: ID do Produto
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Obtém produto por ID
+      tags:
+      - Catalog
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: Realiza o cadastro de um novo usuário com as informações fornecidas
+      parameters:
+      - description: Dados para cadastro do usuário
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UserSignup'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Dados retornados ao cadastrar o usuário
+          schema:
+            $ref: '#/definitions/dto.UserSignupResponse'
+        "400":
+          description: Erro na requisição
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Registra um novo usuário
+      tags:
+      - Users
+  /seller/categories:
+    post:
+      consumes:
+      - application/json
+      description: Cria uma categoria utilizando os dados fornecidos no corpo da requisição
+      parameters:
+      - description: Dados para criação da categoria
+        in: body
+        name: category
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateCategoryResquest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Cria uma nova categoria
+      tags:
+      - Catalog
+  /seller/categories/{id}:
+    delete:
+      description: Remove uma categoria do sistema com base no ID informado
+      parameters:
+      - description: ID da Categoria
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Exclui uma categoria
+      tags:
+      - Catalog
+    patch:
+      consumes:
+      - application/json
+      description: Atualiza os dados de uma categoria existente com base no ID informado
+      parameters:
+      - description: ID da Categoria
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Dados para atualização da categoria
+        in: body
+        name: category
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateCategoryResquest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Atualiza uma categoria
+      tags:
+      - Catalog
+  /seller/products:
+    get:
+      description: Retorna a lista de produtos do vendedor autenticado
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Obtém os produtos do vendedor
+      tags:
+      - Catalog
+    post:
+      consumes:
+      - application/json
+      description: Cria um produto para o vendedor autenticado com os dados fornecidos
+      parameters:
+      - description: Dados para criação do produto
+        in: body
+        name: product
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Cria um novo produto
+      tags:
+      - Catalog
+  /seller/products/{id}:
+    delete:
+      description: Remove um produto do vendedor autenticado com base no ID informado
+      parameters:
+      - description: ID do Produto
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Exclui um produto
+      tags:
+      - Catalog
+    patch:
+      consumes:
+      - application/json
+      description: Atualiza a quantidade em estoque de um produto do vendedor autenticado
+      parameters:
+      - description: ID do Produto
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Dados para atualização do estoque
+        in: body
+        name: stock
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateStockRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Atualiza o estoque de um produto
+      tags:
+      - Catalog
+    put:
+      consumes:
+      - application/json
+      description: Atualiza os dados de um produto do vendedor autenticado com base
+        no ID informado
+      parameters:
+      - description: ID do Produto
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Dados atualizados do produto
+        in: body
+        name: product
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Edita um produto
+      tags:
+      - Catalog
+  /users/become-seller:
+    post:
+      consumes:
+      - application/json
+      description: Atualiza o status do usuário para vendedor, realizando as devidas
+        validações
+      parameters:
+      - description: Dados para tornar-se vendedor
+        in: body
+        name: seller
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SellerInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Torna o usuário em vendedor
+      tags:
+      - Users
+  /users/cart:
+    post:
+      consumes:
+      - application/json
+      description: Adiciona produtos ao carrinho do usuário autenticado
+      parameters:
+      - description: Dados do carrinho
+        in: body
+        name: cart
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateCartRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Adiciona item(s) ao carrinho
+      tags:
+      - Users
+  /users/order:
+    get:
+      description: Retorna a lista de pedidos do usuário autenticado
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Obtém todos os pedidos
+      tags:
+      - Users
+  /users/order/{id}:
+    get:
+      description: Retorna os detalhes de um pedido específico do usuário autenticado
+      parameters:
+      - description: ID do pedido
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Obtém pedido por ID
+      tags:
+      - Users
+  /users/profile:
+    get:
+      description: Retorna os dados do perfil do usuário autenticado
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Obtém o perfil do usuário
+      tags:
+      - Users
+    patch:
+      consumes:
+      - application/json
+      description: Atualiza as informações do perfil do usuário autenticado
+      parameters:
+      - description: Dados para atualização do perfil
+        in: body
+        name: profile
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ProfileInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Atualiza o perfil do usuário
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      description: Cria o perfil do usuário autenticado com as informações fornecidas
+      parameters:
+      - description: Dados para criação do perfil
+        in: body
+        name: profile
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ProfileInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Cria o perfil do usuário
+      tags:
+      - Users
+  /users/verify:
+    get:
+      description: Gera e retorna o código de verificação para o usuário autenticado
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Obtém código de verificação
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      description: Verifica o código enviado pelo usuário para ativação/validação
+        da conta
+      parameters:
+      - description: Código de verificação
+        in: body
+        name: verification
+        required: true
+        schema:
+          $ref: '#/definitions/dto.VerificationCodeInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Verifica código de autenticação
+      tags:
+      - Users
+swagger: "2.0"

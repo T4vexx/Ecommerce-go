@@ -36,3 +36,13 @@ type ProfileInput struct {
 	LastName     string       `json:"last_name"`
 	AddressInput AddressInput `json:"address_input"`
 }
+
+type UserSignupResponse struct {
+	Message string `json:"message" example:"login/register"`
+	Token   string `json:"token" example:"token JWT"`
+}
+
+type ErrorResponse struct {
+	Message string `json:"message" example:"Please provide valid inputs"`
+	Reason  string `json:"reason,omitempty" example:"detalhes do erro se houver"`
+}
